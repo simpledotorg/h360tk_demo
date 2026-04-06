@@ -8,6 +8,7 @@ import os
 import psycopg2
 from psycopg2 import errorcodes
 
+HEADER_ROW = 1
 COL_INDIVIDUAL_ID = 'Patient ID'
 COL_PATIENT_NAME = 'Patient Name'
 COL_SEX = 'Gender'
@@ -245,16 +246,10 @@ ON CONFLICT (encounter_id) DO UPDATE SET
 
 def ingest_and_execute(file_path: str) -> None:
     """
-    Reads an Excel file, synthesizes BP/BS from status fields, and inserts
+    Reads an Excel file, extracts BP/BS from fields, and inserts
     into the database using direct SQL (matching reference hierarchy pattern).
 
     Facility hierarchy: Region → District → Facility → Sub-Facility (see HIERARCHY_LEVELS).
-
-    Encounter date priority:
-      HTN followup → DM followup → Registration date
-
-    When BOTH followup dates are present with BP + BS data,
-    two separate encounters are created with their respective dates.
     """
 
     DTYPE_MAPPING = {COL_INDIVIDUAL_ID: str, COL_MOBILE: str}
@@ -268,13 +263,14 @@ def ingest_and_execute(file_path: str) -> None:
     }
 
     try:
+        header_index = HEADER_ROW - 1
         if file_path.lower().endswith('.csv'):
-            df_data = pd.read_csv(file_path, dtype=DTYPE_MAPPING)
+            df_data = pd.read_csv(file_path, dtype=DTYPE_MAPPING, skiprows=header_index)
         else:
             df_data = pd.read_excel(
                 file_path,
                 sheet_name=0,
-                header=0,
+                header=header_index,
                 dtype=DTYPE_MAPPING,
                 engine='openpyxl'
             )
