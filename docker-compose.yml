@@ -54,3 +54,49 @@ services:
       - FILEBROWSER_ADMIN_PASSWORD=admin
       - FILEBROWSER_BASEURL=/
 
+  # Custom image: drakkan/sftpgo + Python venv; upload hook runs ingest_file_h360tk.py (see Dockerfile.sftpgo).
+  sftpgo:
+    build:
+      context: .
+      dockerfile: Dockerfile.sftpgo
+      args:
+        # Must match INGEST_SCRIPT in config/sftpgo-ingest.env and the ingest .py volume below.
+        INGEST_SCRIPT_PATH: /scripts/ingest_file_h360tk.py
+    image: h360tk-sftpgo:local
+    container_name: sftpgo
+    depends_on:
+      - postgres
+    ports:
+      - "8090:8080"  # Web Admin & Client UI
+      - "2022:2022"  # SFTP Service
+      - "2121:2121"  # FTP control
+      # FTP passive data — required for uploads from host/LAN (see ftpd env below).
+      - "50000-50100:50000-50100"
+    volumes:
+      - ./loaddata.json:/etc/sftpgo/init/loaddata.json
+      # Same host dir as file-processor:/data and filebrowser:/srv
+      - .upload:/srv/sftpgo/data/webuser:rw
+      # Hook config: Postgres + INGEST_SCRIPT (SFTPGo does not pass compose env into hooks).
+      - ./config/sftpgo-ingest.env:/etc/sftpgo/ingest.env:ro
+      # Hook + Python logs (not mixed with uploads)
+      - ./logs/sftpgo-ingest:/var/log/sftpgo-ingest:rw
+      - ./scripts/sftpgo_ingest_hook.sh:/usr/local/bin/sftpgo_ingest_hook.sh:ro
+      - ./ingest_file_h360tk.py:/scripts/ingest_file_h360tk.py:ro
+    environment:
+      - SFTPGO_HTTPD__BINDINGS__0__PORT=8080
+      - SFTPGO_FTPD__BINDINGS__0__PORT=2121
+      # PASV must advertise an address the *client* can open data connections to (not the container IP).
+      # Set FTP_PASSIVE_IP in .env to match how users connect: 127.0.0.1 for ftp://127.0.0.1:2121 only;
+      # your machine LAN IP if everyone uses ftp://<lan-ip>:2121 (works for local + LAN); public IP for internet.
+      - SFTPGO_FTPD__BINDINGS__0__FORCE_PASSIVE_IP=${FTP_PASSIVE_IP:-127.0.0.1}
+      - SFTPGO_FTPD__PASSIVE_PORT_RANGE__START=50000
+      - SFTPGO_FTPD__PASSIVE_PORT_RANGE__END=50100
+      - SFTPGO_DATA_PROVIDER__PASSWORD_VALIDATION__ADMINS__MIN_ENTROPY=0
+      - SFTPGO_DATA_PROVIDER__CREATE_DEFAULT_ADMIN=true
+      - SFTPGO_DEFAULT_ADMIN_CONFIGURED=1
+      - SFTPGO_DEFAULT_ADMIN_USERNAME=admin
+      - SFTPGO_DEFAULT_ADMIN_PASSWORD=admin
+      - SFTPGO_LOADDATA_FROM=/etc/sftpgo/init/loaddata.json
+      - SFTPGO_LOADDATA_MODE=1
+      - SFTPGO_COMMON__ACTIONS__EXECUTE_ON=upload
+      - SFTPGO_COMMON__ACTIONS__HOOK=/usr/local/bin/sftpgo_ingest_hook.sh
