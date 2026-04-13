@@ -1,0 +1,27 @@
+{
+  "folders": [
+    {
+      "name": "tmp-folder",
+      "mapped_path": "/tmp",
+      "description": "Access to host temporary files"
+    }
+  ],
+  "users": [
+    {
+      "username": "webuser",
+      "password": "userpass456",
+      "status": 1,
+      "permissions": {
+        "/": ["*"]
+      },
+      "virtual_folders": [
+        {
+          "name": "tmp-folder",
+          "virtual_path": "/tmp",
+          "quota_size": -1,
+          "quota_files": -1
+        }
+      ]
+    }
+  ]
+}

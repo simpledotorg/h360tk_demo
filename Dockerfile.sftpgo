@@ -1,0 +1,27 @@
+# Heart360TK: SFTPGo + Python venv; hook reads DB + INGEST_SCRIPT from mounted config/sftpgo-ingest.env.
+FROM drakkan/sftpgo:latest
+
+ARG INGEST_SCRIPT_PATH=/scripts/ingest_file_h360tk.py
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3 \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/ingest \
+    && /opt/ingest/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/ingest/bin/pip install --no-cache-dir \
+        pandas \
+        psycopg2-binary \
+        openpyxl
+
+COPY ingest_file_h360tk.py ${INGEST_SCRIPT_PATH}
+COPY scripts/sftpgo_ingest_hook.sh /usr/local/bin/sftpgo_ingest_hook.sh
+
+RUN chmod 755 /usr/local/bin/sftpgo_ingest_hook.sh \
+    && chown -R 1000:1000 "$(dirname "${INGEST_SCRIPT_PATH}")" /opt/ingest
+
+USER 1000:1000

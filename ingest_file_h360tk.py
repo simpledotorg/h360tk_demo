@@ -23,7 +23,7 @@ COL_SHC = 'Sub Facility'
 
 # Registration date column
 COL_REGISTRATION_DATE = 'Registration Date'
-COL_LAST_VISIT_TIME = 'Last Visit Time'
+COL_VISIT_TIME = 'Visit Time'
 
 # HTN columns
 COL_SYSTOLIC = 'Systolic'
@@ -257,7 +257,7 @@ def ingest_and_execute(file_path: str) -> None:
     stats = {
         'total_rows': 0,
         'unique_patients': set(),
-        'invalid_last_visit_date': 0,
+        'invalid_visit_date': 0,
         'invalid_registration_date': 0,
         'processed_records': 0
     }
@@ -301,18 +301,18 @@ def ingest_and_execute(file_path: str) -> None:
                 continue
 
             # Get registration date from the registration date column
-            last_visit_date = parse_date(row.get(COL_LAST_VISIT_TIME))
-            if not last_visit_date:
-                stats['invalid_last_visit_date'] += 1
-                print(f"Row {idx + 2}: Skipping - last visit time not found or invalid", file=sys.stderr)
+            visit_date = parse_date(row.get(COL_VISIT_TIME))
+            if not visit_date:
+                stats['invalid_visit_date'] += 1
+                print(f"Row {idx + 2}: Skipping - visit time not found or invalid", file=sys.stderr)
                 continue
             
             registration_date = parse_date(row.get(COL_REGISTRATION_DATE))
             
             # If registration date not found, try to use last visit time
             if not registration_date:
-                if last_visit_date:
-                    registration_date = last_visit_date
+                if visit_date:
+                    registration_date = visit_date
                 else:
                     stats['invalid_registration_date'] += 1
                     print(f"Row {idx + 2}: Skipping - registration date and last visit time not found or invalid", file=sys.stderr)
@@ -358,7 +358,7 @@ def ingest_and_execute(file_path: str) -> None:
                 'patient_name': patient_name,
                 'facility': phc,
                 'registration_date': registration_date.strftime(DATE_FORMAT_OUT) if registration_date else None,
-                'encounter_datetime': last_visit_date.strftime(DATE_FORMAT_OUT) if last_visit_date else None,
+                'encounter_datetime': visit_date.strftime(DATE_FORMAT_OUT) if visit_date else None,
                 'systolic_bp': systolic if systolic else None,
                 'diastolic_bp': diastolic if diastolic else None,
                 'blood_sugar_type': sugar_type if sugar_type else None,
@@ -382,7 +382,7 @@ def ingest_and_execute(file_path: str) -> None:
                 stats['processed_records'] += 1
 
                 # 2. Create encounter(s) and insert clinical data
-                enc_id = execute_insert_encounter(cur, patient_id_sql, last_visit_date, org_unit_id)
+                enc_id = execute_insert_encounter(cur, patient_id_sql, visit_date, org_unit_id)
                 if not pd.isna(systolic) and not pd.isna(diastolic):
                     execute_insert_bp(cur, enc_id, systolic, diastolic)
                 
@@ -395,7 +395,7 @@ def ingest_and_execute(file_path: str) -> None:
 
         print(f"\n--- EXECUTION SUMMARY ---", file=sys.stderr)
         print(f"Total rows in Excel: {stats['total_rows']}", file=sys.stderr)
-        print(f"Invalid last visit date excluded: {stats['invalid_last_visit_date']}", file=sys.stderr)
+        print(f"Invalid last visit date excluded: {stats['invalid_visit_date']}", file=sys.stderr)
         print(f"Invalid registration date excluded: {stats['invalid_registration_date']}", file=sys.stderr)
         print(f"Successfully processed records: {stats['processed_records']}", file=sys.stderr)
 
