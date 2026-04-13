@@ -64,7 +64,8 @@ HIERARCHY_LEVELS = [
     {'level': 4, 'column': [COL_SHC], 'display_name': 'Sub-Facility', 'var_name': 'sub_facility', 'default': None},
 ]
 
-DEFAULT_SUGAR_TYPE = 'random'
+ALLOWED_SUGAR_TYPES = {'RBS', 'FBS', 'PPBS', 'HBA1C'}
+DEFAULT_SUGAR_TYPE = 'RBS'
 
 # --- HELPER FUNCTIONS ---
 
@@ -321,11 +322,21 @@ def ingest_and_execute(file_path: str) -> None:
             systolic = row.get(COL_SYSTOLIC)
             diastolic = row.get(COL_DIASTOLIC)
 
-            sugar_type = row.get(COL_BS_TYPE)
-            if not sugar_type or pd.isna(sugar_type):
+            raw_sugar_type = row.get(COL_BS_TYPE)
+            sugar_type = None
+            if not raw_sugar_type or pd.isna(raw_sugar_type):
                 sugar_type = DEFAULT_SUGAR_TYPE
+            else:
+                sugar_type = str(raw_sugar_type).strip().upper()
+                if sugar_type not in ALLOWED_SUGAR_TYPES:
+                    sugar_type = None
+                    print(
+                        f"Row {idx + 2}: Skipping - invalid blood sugar type '{raw_sugar_type}'",
+                        file=sys.stderr
+                    )
+
             sugar_value = row.get(COL_BS_VALUE)
-            
+
             patient_id = uuid_to_int_hash(row.get(COL_INDIVIDUAL_ID))
             # Build patient fields
             

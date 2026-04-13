@@ -11,7 +11,7 @@
 | Visit Time        | Date when the patient visited the facility. Mandatory field. Records are skipped if this is missing. |
 | Systolic          | Systolic blood pressure reading. If missing along with diastolic, BP record is skipped. |
 | Diastolic         | Diastolic blood pressure reading. If missing along with systolic, BP record is skipped. |
-| Blood Sugar Type  | Type of blood sugar reading (random / fasting / hba1c). Defaults to "random" if not provided. |
+| Blood Sugar Type  | Type of blood sugar reading (RBS / FBS / HBA1C / PPBS). Defaults to "RBS" if not provided. |
 | Blood Sugar Value | Actual blood sugar measurement value. |
 | Region            | Top-level hierarchy. Defaults to "Demo Region" if not provided. |
 | District          | Second-level hierarchy under Region. |

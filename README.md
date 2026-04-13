@@ -94,6 +94,6 @@ When ingesting blood sugar records, a type value is required.
 
 - Column source: `COL_BS_TYPE`  
 - Default value (if missing):  
-  DEFAULT_SUGAR_TYPE = "random"
+  DEFAULT_SUGAR_TYPE = "RBS"
 
 If your system uses a different default value, you can update this accordingly.
