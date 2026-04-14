@@ -1,19 +1,19 @@
 ## Sample Anonymised Patient Data - Column Definitions
 
-| Column Name        | Description |
-|-------------------|-------------|
-| Patient Name      | Made-up patient names used for anonymisation. Names are consistent within the dataset but do not represent real individuals. |
-| Patient ID        | Short numeric code used as a unique identifier for a patient. Does not resemble original IDs. |
-| Phone Number      | Patient’s contact number. Optional field. |
-| Date of Birth     | Patient’s date of birth. |
-| Gender            | Gender of the patient. |
-| Registration Date | Date when the patient was enrolled into the system. If not available, the system uses Visit Time as the registration date. |
-| Visit Time        | Date when the patient visited the facility. Mandatory field. Records are skipped if this is missing. |
-| Systolic          | Systolic blood pressure reading. If missing along with diastolic, BP record is skipped. |
-| Diastolic         | Diastolic blood pressure reading. If missing along with systolic, BP record is skipped. |
-| Blood Sugar Type  | Type of blood sugar reading (RBS / FBS / HBA1C / PPBS). Defaults to "RBS" if not provided. |
-| Blood Sugar Value | Actual blood sugar measurement value. |
-| Region            | Top-level hierarchy. Defaults to "Demo Region" if not provided. |
-| District          | Second-level hierarchy under Region. |
-| Facility          | Third-level hierarchy under District. Defaults to "UNKNOWN" if not provided. |
-| Sub Facility      | Lowest-level hierarchy under Facility. |
+| Column Name       | Description |  Notes
+|-------------------|-------------|--------
+| Patient Name      | Patient's full name as free text (e.g. "Ishita Tanya"). | Optional. Can be omitted if there are data-sharing or privacy restrictions. The toolkit functions normally without it. |
+| Patient ID        | A unique identifier for each patient — any alphanumeric string (e.g. "PH-00123"). Each patient must have exactly one ID that stays the same across visits. | REQUIRED FIELD. Used to match visits to the correct patient and prevent duplicate records. |
+| Phone Number      | Patient's phone number as a string (e.g. "09171234567"). No specific format enforced. | Optional |
+| Date of Birth     | Patient's date of birth in DD/MM/YYYY or YYYY-MM-DD format. | Optional |
+| Gender            | Free text (e.g. "Male", "Female"). No specific coding required. | Optional |
+| Registration Date | Date the patient was first registered. Accepts most date formats: DD/MM/YYYY, YYYY-MM-DD, or with time included. | If missing, the toolkit will use the Last Visit Time as a fallback. If both are missing, the row is skipped. |
+| Visit Time        | Date (and optionally time) of the most recent clinical encounter. Accepts: DD/MM/YYYY, YYYY-MM-DD, or with time (e.g. "2024-03-15 10:30:00"). | REQUIRED. Used as the encounter date. Also serves as a fallback for Registration Date if that field is missing. Rows without a valid date here are skipped. |
+| Systolic          | Systolic blood pressure reading as a number (e.g. "128"). | Required, if missing BP record is skipped |
+| Diastolic         | Diastolic blood pressure reading as a number (e.g. "82"). | Required, if missing BS record is skipped |
+| Blood Sugar Type  | Type of blood sugar test (RBS / FBS / HBA1C / PPBS). | Defaults to "RBS" if not provided. |
+| Blood Sugar Value | Blood sugar reading as a number (e.g. "110"). | Optional
+| Region            | Name of the administrative region (Level 1 geography). Free text string. | |
+| District          | Name of the district (Level 2 geography). Free text string. | |
+| Facility          | Name of the health facility (e.g. primary care centre). Free text string. | |
+| Sub Facility      | Name of the sub-facility or health post (Level 4). Free text string. | Optional. Leave blank if not applicable. |

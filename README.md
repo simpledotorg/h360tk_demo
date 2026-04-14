@@ -1,6 +1,35 @@
-In order to launch this system:
+## Setup Instructions
 
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/simpledotorg/h360tk_demo.git
+cd h360tk_demo
 ```
+
+### 2. Configure Environment Variables
+
+Update required values in the .env file in the root directory:
+
+Update the following variables as needed:
+
+```bash
+HOST_UID=1000
+HOST_GID=1000
+```
+
+To get correct values for your system:
+
+```bash
+id -u   # User ID
+id -g   # Group ID
+```
+
+> These values must match the user/group that owns the `.upload` directory to avoid permission issues.
+
+### 3. Start the System
+
+```bash
 docker compose up -d
 ```
 
@@ -10,13 +39,13 @@ Once the system is running, access the dashboard at:
 - **Username:** `admin`
 - **Password:** `your_secure_password`
 
-### Upload Files
+### FTP Server
 
-To upload files, navigate to:
+To upload manually through UI, navigate to:
 
-- **URL:** http://localhost:8080/
-- **Username:** `admin`
-- **Password:** `admin`
+- **Web Admin URL:** http://localhost:8090/
+- **Username:** `webuser`
+- **Password:** `userpass456`
 
 ### Important Security Note
 
@@ -97,3 +126,120 @@ When ingesting blood sugar records, a type value is required.
   DEFAULT_SUGAR_TYPE = "RBS"
 
 If your system uses a different default value, you can update this accordingly.
+
+---
+
+### FTP Server Configuration (Automated Uploads)
+
+The system includes an FTP server powered by SFTPGo, which allows you to automate file uploads for ingestion.
+
+The FTP service is exposed on:
+
+* **Host:** `127.0.0.1`
+* **Port:** `2121`
+* **Protocol:** FTP
+* **Username:** `webuser`
+* **Password:** `userpass456`
+
+This is configured in the Docker setup under the `sftpgo` service, which exposes the FTP port and passive data ports for file transfer.
+
+---
+
+#### Uploading Files via Command Line
+
+You can upload files using tools like `curl`:
+
+```
+curl -T ./test_data/01_Sample_Data.xlsx "ftp://webuser:userpass456@127.0.0.1:2121/01_Sample_Data.xlsx"
+```
+
+---
+
+#### Automating Periodic Uploads
+
+You can automate uploads using cron jobs.
+
+Example (runs every hour):
+
+```bash
+crontab -e
+```
+
+Add:
+
+```
+0 * * * * curl -T /path/to/file.xlsx "ftp://webuser:userpass456@127.0.0.1:2121/file.xlsx"
+```
+
+---
+
+#### How It Works
+
+* Files uploaded via FTP are stored in the shared `.upload` directory
+* The system automatically triggers the ingestion script:
+
+  * `ingest_file_h360tk.py`
+* This is handled via an upload hook configured in the FTP service
+
+So **no manual trigger is required** — uploading the file is enough.
+
+---
+
+#### HOST_UID and HOST_GID Configuration
+
+The `sftpgo` container runs using a specific user and group ID defined by:
+
+```bash
+user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+```
+
+These values should match user and group IDs which has created .upload directory to avoid permission issues when reading/writing uploaded files.
+
+##### Why this is important
+
+* The `.upload` directory is mounted from your host into the container
+* If the container runs with a different UID/GID than your host user:
+
+  * Files may be created with incorrect ownership
+  * You may not be able to read/edit/delete uploaded files from your host
+  * The ingestion script may fail due to permission errors
+
+##### How to set it correctly
+
+Run the following commands on your host:
+
+```bash
+id -u   # returns your user ID
+id -g   # returns your group ID
+```
+
+Then add these values to your `.env` file:
+
+```bash
+HOST_UID=1000
+HOST_GID=1000
+```
+
+(Replace `1000` with your actual values)
+Example, if the .upload directry is created with root user, then you should change the values to
+```
+HOST_UID=0
+HOST_GID=0
+```
+
+##### When you need to modify this
+
+* If you see permission errors in `.upload` directory
+* If uploaded files are owned by an unexpected user
+* When running on shared servers or non-standard Linux setups
+
+---
+
+#### ⚠️ Important Notes
+
+* Ensure `FTP_PASSIVE_IP` is correctly set in your `.env`:
+
+  * `127.0.0.1` → for local usage
+  * Your Host IP → for network access
+* Passive ports `50000–50100` must be open if accessing from outside
+* Change default credentials in production
