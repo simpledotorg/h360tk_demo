@@ -94,25 +94,19 @@ flowchart TD
 ### End-to-End Flow (UI + FTP)
 
 sequenceDiagram
-    participant User
-    participant UI as Web UI
-    participant FTP as FTP Server
-    participant Ingest as Ingestion Service
+    autonumber
+    actor User
+    participant UI as Web UI / FTP
+    participant IS as Ingestion Service
     participant DB as PostgreSQL
-    participant Grafana
+    participant G as Grafana
 
-    User->>UI: Upload File
-    UI->>Ingest: Save to shared volume
-
-    User->>FTP: Upload file (optional)
-    FTP->>Ingest: Place in ingestion directory
-
-    Ingest->>Ingest: Detect new file
-    Ingest->>Ingest: Parse & validate
-    Ingest->>DB: Insert data
-
-    Grafana->>DB: Query data
-    DB-->>Grafana: Return results
+    User->>UI: Upload File (CSV/XLSX)
+    UI->>IS: Save to Shared Volume
+    IS->>IS: Detect & Validate File
+    IS->>DB: Insert Transformed Data
+    DB-->>G: Data Available for Query
+    G->>User: Display Updated Dashboards
     
 ---
 
