@@ -7,27 +7,7 @@ git clone https://github.com/simpledotorg/h360tk_demo.git
 cd h360tk_demo
 ```
 
-### 2. Configure Environment Variables
-
-Update required values in the .env file in the root directory:
-
-Update the following variables as needed:
-
-```bash
-HOST_UID=1000
-HOST_GID=1000
-```
-
-To get correct values for your system:
-
-```bash
-id -u   # User ID
-id -g   # Group ID
-```
-
-> These values must match the user/group that owns the `.upload` directory to avoid permission issues.
-
-### 3. Start the System
+### 2. Start the System
 
 ```bash
 docker compose up -d
@@ -135,6 +115,10 @@ If your system uses a different default value, you can update this accordingly.
 
 ### FTP Server Configuration (Automated Uploads)
 
+#### Note:
+This configuration is needed when the system is hosted somewhere other than localhost.
+If you are using it your local system, and running the service on localhost, you might choose to skip this.
+
 The system includes an FTP server powered by SFTPGo, which allows you to automate file uploads for ingestion.
 
 The FTP service is exposed on:
@@ -209,12 +193,13 @@ These values should match user and group IDs which has created .upload directory
   * The ingestion script may fail due to permission errors
 
 ##### How to set it correctly
+Check from which user the .upload directory, inside the prohect directory, is created with. Most likely in a hosted system (other than localhost), it will be root
 
 Run the following commands on your host:
 
 ```bash
-id -u   # returns your user ID
-id -g   # returns your group ID
+id -u root  # returns user ID of root user
+id -g root  # returns group ID of root user
 ```
 
 Then add these values to your `.env` file:
