@@ -67,7 +67,7 @@ The system is composed of multiple loosely coupled services running via Docker.
                  |   Grafana     |
                  |  Dashboard    |
                  +---------------+
-                
+
 ---
 
 ## 4. Data Flow
@@ -97,21 +97,20 @@ The system is composed of multiple loosely coupled services running via Docker.
 
 ### End-to-End Flow (UI + FTP)
 
-User            Web UI         FTP Server     Ingestion Service     PostgreSQL     Grafana
- |                 |                |                |                   |             |
- |---Upload File-->|                |                |                   |             |
- |                 |---Save File--->|                |                   |             |
- |                 |                |                |                   |             |
- |                 |                |                |---Detect File---->|             |
- |                 |                |                |                   |             |
- |                 |                |                |---Parse & Validate             |
- |                 |                |                |                   |             |
- |                 |                |                |---Insert Data---->|             |
- |                 |                |                |                   |             |
- |                 |                |                |                   |---Query---->|
- |                 |                |                |                   |             |
- |                 |                |                |                   |<--Dashboard |
-
+User Web UI FTP Server Ingestion Service PostgreSQL Grafana
+| | | | | |
+|---Upload File-->| | | | |
+| |---Save File--->| | | |
+| | | | | |
+| | | |---Detect File---->| |
+| | | | | |
+| | | |---Parse & Validate |
+| | | | | |
+| | | |---Insert Data---->| |
+| | | | | |
+| | | | |---Query---->|
+| | | | | |
+| | | | |<--Dashboard |
 ---
 
 ## 6. Container Breakdown
