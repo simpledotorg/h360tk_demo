@@ -41,32 +41,26 @@ The system is composed of multiple loosely coupled services running via Docker.
 ---
 
 ## 3. System Architecture Diagram
-               +----------------------+
-               |     User / Client    |
-               +----------+-----------+
-                          |
-           +--------------+--------------+
-           |                             |
-   +-------v-------+             +-------v-------+
-   |   Web Upload  |             |   FTP Server  |
-   |   (HTTP UI)   |             | (File Drop)   |
-   +-------+-------+             +-------+-------+
-           |                             |
-           +-------------+---------------+
-                         |
-                 +-------v-------+
-                 |  Ingestion    |
-                 |  Service      |
-                 +-------+-------+
-                         |
-                 +-------v-------+
-                 | PostgreSQL DB |
-                 +-------+-------+
-                         |
-                 +-------v-------+
-                 |   Grafana     |
-                 |  Dashboard    |
-                 +---------------+
+
+```mermaid
+flowchart TD
+    User[User / Client]
+
+    UI[Web Upload UI]
+    FTP[FTP Server]
+
+    INGEST[Ingestion Service]
+    DB[(PostgreSQL Database)]
+    GRAFANA[Grafana Dashboard]
+
+    User --> UI
+    User --> FTP
+
+    UI --> INGEST
+    FTP --> INGEST
+
+    INGEST --> DB
+    DB --> GRAFANA
 
 ---
 
