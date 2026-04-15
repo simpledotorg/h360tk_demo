@@ -61,6 +61,8 @@ flowchart TD
 
     INGEST --> DB
     DB --> GRAFANA
+```
+
 ---
 
 ## 4. Data Flow
@@ -90,21 +92,29 @@ flowchart TD
 
 ### End-to-End Flow (UI + FTP)
 
+```mermaid
 sequenceDiagram
-    autonumber
-    actor User
-    participant UI as Web UI / FTP
-    participant IS as Ingestion Service
+    participant User
+    participant UI as Web UI
+    participant FTP as FTP Server
+    participant Ingest as Ingestion Service
     participant DB as PostgreSQL
-    participant G as Grafana
+    participant Grafana
 
-    User->>UI: Upload File (CSV/XLSX)
-    UI->>IS: Save to Shared Volume
-    IS->>IS: Detect & Validate File
-    IS->>DB: Insert Transformed Data
-    DB-->>G: Data Available for Query
-    G->>User: Display Updated Dashboards
-    
+    User->>UI: Upload File
+    UI->>Ingest: Save to shared volume
+
+    User->>FTP: Upload file (optional)
+    FTP->>Ingest: Place in ingestion directory
+
+    Ingest->>Ingest: Detect new file
+    Ingest->>Ingest: Parse & validate
+    Ingest->>DB: Insert data
+
+    Grafana->>DB: Query data
+    DB-->>Grafana: Return results
+```
+
 ---
 
 ## 6. Container Breakdown
@@ -121,10 +131,10 @@ The system is deployed using Docker Compose.
 ### 6.2 Ingestion Service Container
 - Core processing logic  
 - Responsibilities:
-  - File parsing
-  - Data validation
-  - Transformation
-  - Database insertion    
+  - File parsing  
+  - Data validation  
+  - Transformation  
+  - Database insertion  
 
 ---
 
@@ -137,8 +147,8 @@ The system is deployed using Docker Compose.
 ### 6.4 FTP Server Container
 - Provides file transfer access  
 - Supports:
-  - Manual uploads
-  - Automated pipelines (external systems)  
+  - Manual uploads  
+  - Automated pipelines  
 - Writes files into ingestion directory  
 
 ---
@@ -155,15 +165,14 @@ Default access:
 
 ## 7. File Lifecycle
 
-[Upload]
-   ↓
-[Landing Directory]
-   ↓
-[Processing by Ingestion Service]
-   ↓
-[Database Insert]
-   ↓
-[Optional Archive / Delete]
+```mermaid
+flowchart TD
+    A[File Uploaded] --> B[Landing Directory]
+    B --> C[Ingestion Service Picks File]
+    C --> D[Validation & Parsing]
+    D --> E[Insert into Database]
+    E --> F[Archive or Delete File]
+```
 
 ---
 
@@ -177,7 +186,7 @@ Each file undergoes:
 2. **Validation**
    - Required fields  
    - Data type checks  
-   - Allowed values 
+   - Allowed values  
 
 3. **Transformation**
    - Normalize values  
@@ -194,3 +203,4 @@ Start all services:
 
 ```bash
 docker compose up -d
+```
