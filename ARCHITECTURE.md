@@ -45,11 +45,9 @@ The system is composed of multiple loosely coupled services running via Docker.
 ```mermaid
 flowchart TD
     User[User / Client]
-    
-    subgraph Entry_Points [Entry Points]
-        UI[Web Upload UI]
-        FTP[FTP Server]
-    end
+
+    UI[Web Upload UI]
+    FTP[FTP Server]
 
     INGEST[Ingestion Service]
     DB[(PostgreSQL Database)]
@@ -63,7 +61,6 @@ flowchart TD
 
     INGEST --> DB
     DB --> GRAFANA
-
 ---
 
 ## 4. Data Flow
