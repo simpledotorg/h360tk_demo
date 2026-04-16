@@ -6,6 +6,62 @@
 git clone https://github.com/simpledotorg/h360tk_demo.git
 cd h360tk_demo
 ```
+#### HOST_UID and HOST_GID Configuration (To be used if you are setting this up on a remote server other than localhost)
+If are using localhost, skip this and move to Step 2, and start the docker containers.
+
+The `sftpgo` container runs using a specific user and group ID defined by:
+
+```bash
+user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+```
+
+These values should match user and group IDs which has created .upload directory to avoid permission issues when reading/writing uploaded files.
+
+##### Why this is important
+
+* The `.upload` directory is mounted from your host into the container
+* If the container runs with a different UID/GID than your host user:
+
+  * Files may be created with incorrect ownership
+  * You may not be able to read/edit/delete uploaded files from your host
+  * The ingestion script may fail due to permission errors
+
+##### How to set it correctly
+In your .env file, replace `1000` with your actual values
+```
+HOST_UID=0
+HOST_GID=0
+```
+Most cases the ./upload directory is created with root user so this configuration will work.
+
+In case if this doesn't work and you see permission errors related to upload, check from which user the .upload directory, inside the project directory, is created with.
+
+Run the following commands on your host:
+
+```bash
+id -u  # returns user ID 
+id -g root  # returns group ID
+```
+
+Then add these values to your `.env` file:
+
+```bash
+HOST_UID=1000
+HOST_GID=1000
+```
+
+##### When you need to modify this
+
+* If you see permission errors in `.upload` directory
+* If uploaded files are owned by an unexpected user
+* When running on shared servers or non-standard Linux setups
+
+##### FTP_PASSIVE_IP configuration (To be used if you are setting this up on a remote server other than localhost)
+In you .env file, change the FTP_PASSIVE_IP to the IP of your host instance. If you are using localhost, keep it unchanged.
+
+```bash
+FTP_PASSIVE_IP=host_IP
+```
 
 ### 2. Start the System
 
@@ -294,57 +350,6 @@ Examples:
 * This is handled via an upload hook configured in the FTP service
 
 So **no manual trigger is required** — uploading the file is enough.
-
----
-
-#### HOST_UID and HOST_GID Configuration
-
-The `sftpgo` container runs using a specific user and group ID defined by:
-
-```bash
-user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
-```
-
-These values should match user and group IDs which has created .upload directory to avoid permission issues when reading/writing uploaded files.
-
-##### Why this is important
-
-* The `.upload` directory is mounted from your host into the container
-* If the container runs with a different UID/GID than your host user:
-
-  * Files may be created with incorrect ownership
-  * You may not be able to read/edit/delete uploaded files from your host
-  * The ingestion script may fail due to permission errors
-
-##### How to set it correctly
-Check from which user the .upload directory, inside the project directory, is created with. Most likely in a hosted system (other than localhost), it will be root
-
-Run the following commands on your host:
-
-```bash
-id -u root  # returns user ID of root user
-id -g root  # returns group ID of root user
-```
-
-Then add these values to your `.env` file:
-
-```bash
-HOST_UID=1000
-HOST_GID=1000
-```
-
-(Replace `1000` with your actual values)
-Example, if the .upload directry is created with root user, then you should change the values to
-```
-HOST_UID=0
-HOST_GID=0
-```
-
-##### When you need to modify this
-
-* If you see permission errors in `.upload` directory
-* If uploaded files are owned by an unexpected user
-* When running on shared servers or non-standard Linux setups
 
 ---
 
