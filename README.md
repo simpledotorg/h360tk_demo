@@ -40,7 +40,7 @@ Run the following commands on your host:
 
 ```bash
 id -u  # returns user ID 
-id -g root  # returns group ID
+id -g  # returns group ID
 ```
 
 Then add these values to your `.env` file:
