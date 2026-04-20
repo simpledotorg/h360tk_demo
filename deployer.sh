@@ -146,5 +146,8 @@ echo "Package installation finished for ${OS}."
 echo ''
 echo 'Next steps:'
 echo ''
-echo 'See README.md for application deployment.'
+echo 'To run docker without sudo in this session, run: newgrp docker'
+echo "(or log out and log back in.)"
+echo ''
+echo 'See README.md for application deployment steps.'
 echo '--------------------------------------------------'
