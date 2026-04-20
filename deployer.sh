@@ -143,7 +143,7 @@ fi
 
 echo "--------------------------------------------------"
 echo "Package installation finished for $OS."
-echo "Next: 
+echo "Next:"
 echo ""
 echo "See README.md for deploying the application."
 echo "--------------------------------------------------"
