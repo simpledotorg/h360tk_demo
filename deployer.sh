@@ -20,7 +20,7 @@ semver_ge() {
 buildx_plugin_version() {
     local out v
     out="$(docker buildx version 2>/dev/null)" || return 1
-    # Upstream: line containing github.com/docker/buildx … v0.xx.yy
+    # Upstream: line containing github.com/docker/buildx and v0.xx.yy
     v="$(printf '%s\n' "$out" | grep -F 'github.com/docker/buildx' | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
     if [ -n "$v" ]; then printf '%s' "${v#v}"; return 0; fi
     # Some distros: "Version:" / "version" on same or next tokens
@@ -141,9 +141,10 @@ else
     echo "(or log out and log back in.)"
 fi
 
-echo "--------------------------------------------------"
-echo "Package installation finished for $OS."
-echo "Next:"
-echo ""
-echo "See README.md for deploying the application."
-echo "--------------------------------------------------"
+echo '--------------------------------------------------'
+echo "Package installation finished for ${OS}."
+echo ''
+echo 'Next steps:'
+echo ''
+echo 'See README.md for application deployment.'
+echo '--------------------------------------------------'
