@@ -8,13 +8,45 @@ check_docker() { docker version >/dev/null 2>&1; }
 
 check_compose() { docker compose version &> /dev/null; }
 
-check_buildx_version() {
-    # Returns 0 if version >= 0.17.0, 1 otherwise
-    if ! docker buildx version &>/dev/null; then return 1; fi
+MIN_BUILDX_VERSION="0.17.0"
 
-    current_ver=$(docker buildx version 2>/dev/null | grep -o 'v[0-9.]*' | sed 's/v//')
-    # Compare versions using awk (returns 0 for true, 1 for false)
-    echo "$current_ver 0.17.0" | awk '{if ($1 >= $2) exit 0; else exit 1}'
+# True if $1 >= $2 (dot-separated versions). Requires sort -V (coreutils).
+semver_ge() {
+    [ -n "$1" ] && [ -n "$2" ] || return 1
+    [ "$(printf '%s\n' "$2" "$1" | sort -V | tail -n1)" = "$1" ]
+}
+
+# Parse buildx version from `docker buildx version` (formats differ: upstream vs Amazon Linux builds).
+buildx_plugin_version() {
+    local out v
+    out="$(docker buildx version 2>/dev/null)" || return 1
+    # Upstream: line containing github.com/docker/buildx … v0.xx.yy
+    v="$(printf '%s\n' "$out" | grep -F 'github.com/docker/buildx' | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
+    if [ -n "$v" ]; then printf '%s' "${v#v}"; return 0; fi
+    # Some distros: "Version:" / "version" on same or next tokens
+    v="$(printf '%s\n' "$out" | grep -iE '^[[:space:]]*version:|[[:space:]]version[[:space:]]*=' | head -n3 | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
+    if [ -n "$v" ]; then printf '%s' "${v#v}"; return 0; fi
+    # Last resort: first dotted triplet in output (usually the buildx client version comes first)
+    v="$(printf '%s\n' "$out" | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
+    if [ -n "$v" ]; then printf '%s' "${v#v}"; return 0; fi
+    return 1
+}
+
+check_buildx_version() {
+    if ! docker buildx version &>/dev/null; then return 1; fi
+    local v
+    v="$(buildx_plugin_version)"
+    [ -n "$v" ] || return 1
+    semver_ge "$v" "$MIN_BUILDX_VERSION"
+}
+
+# Compose resolves CLI plugins from several dirs; ensure user-installed buildx is preferred.
+export_docker_cli_plugin_path() {
+    local d="${HOME}/.docker/cli-plugins"
+    if [ -n "${DOCKER_CLI_PLUGIN_EXTRA_DIRS:-}" ] && printf ':%s:' "$DOCKER_CLI_PLUGIN_EXTRA_DIRS" | grep -Fq ":$d:"; then
+        return 0
+    fi
+    export DOCKER_CLI_PLUGIN_EXTRA_DIRS="${d}${DOCKER_CLI_PLUGIN_EXTRA_DIRS:+:${DOCKER_CLI_PLUGIN_EXTRA_DIRS}}"
 }
 
 # Run `docker compose up -d` from workdir. Handles shells where the user is in group "docker"
@@ -23,6 +55,8 @@ run_docker_compose_up() {
     local workdir="$1"
     workdir="$(cd "$workdir" && pwd)"
 
+    export_docker_cli_plugin_path
+
     if docker info >/dev/null 2>&1; then
         ( cd "$workdir" && docker compose up -d )
         return 0
@@ -30,7 +64,7 @@ run_docker_compose_up() {
 
     if command -v sg >/dev/null 2>&1 && sg docker -c "docker info >/dev/null 2>&1"; then
         echo "Docker socket not usable in this shell; running compose with active 'docker' group (sg docker)..."
-        sg docker -c "cd '$workdir' && docker compose up -d"
+        sg docker -c 'cd '"$workdir"' && export DOCKER_CLI_PLUGIN_EXTRA_DIRS="$HOME/.docker/cli-plugins" && docker compose up -d'
         return 0
     fi
 
@@ -103,13 +137,14 @@ case "$OS" in
         fi
 
         # Check Buildx Version (Amazon Linux specific requirement)
+        export_docker_cli_plugin_path
         if ! check_buildx_version; then
-            echo "Installing/Updating Docker Buildx (>= 0.17.0)..."
+            echo "Installing/Updating Docker Buildx (>= ${MIN_BUILDX_VERSION}) under ~/.docker/cli-plugins/ ..."
             mkdir -p ~/.docker/cli-plugins/
-            curl -SL https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
+            curl -fsSL https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
             chmod +x ~/.docker/cli-plugins/docker-buildx
         else
-            echo "Docker Buildx is already up to date (>= 0.17.0)."
+            echo "Docker Buildx is already up to date (>= ${MIN_BUILDX_VERSION})."
         fi
         ;;
 
