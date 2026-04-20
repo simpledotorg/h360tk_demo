@@ -49,31 +49,6 @@ export_docker_cli_plugin_path() {
     export DOCKER_CLI_PLUGIN_EXTRA_DIRS="${d}${DOCKER_CLI_PLUGIN_EXTRA_DIRS:+:${DOCKER_CLI_PLUGIN_EXTRA_DIRS}}"
 }
 
-# Run `docker compose up -d` from workdir. Handles shells where the user is in group "docker"
-# in /etc/group but the current session has not picked up that membership yet (docker.sock EACCES).
-run_docker_compose_up() {
-    local workdir="$1"
-    workdir="$(cd "$workdir" && pwd)"
-
-    export_docker_cli_plugin_path
-
-    if docker info >/dev/null 2>&1; then
-        ( cd "$workdir" && docker compose up -d )
-        return 0
-    fi
-
-    if command -v sg >/dev/null 2>&1 && sg docker -c "docker info >/dev/null 2>&1"; then
-        echo "Docker socket not usable in this shell; running compose with active 'docker' group (sg docker)..."
-        sg docker -c 'cd '"$workdir"' && export DOCKER_CLI_PLUGIN_EXTRA_DIRS="$HOME/.docker/cli-plugins" && docker compose up -d'
-        return 0
-    fi
-
-    echo "--------------------------------------------------"
-    echo "ERROR: Cannot connect to Docker (permission denied on /var/run/docker.sock)."
-    echo "--------------------------------------------------"
-    exit 1
-}
-
 # 1. Detect Operating System
 if [ -f /etc/os-release ]; then
     . /etc/os-release
@@ -156,33 +131,19 @@ esac
 
 # 3. Finalize Permissions
 echo "Checking user permissions..."
-if groups $USER | grep &>/dev/null "\bdocker\b"; then
+if groups "$USER" | grep &>/dev/null "\bdocker\b"; then
     echo "User $USER is already in the docker group."
 else
     echo "Adding $USER to the docker group..."
-    sudo usermod -aG docker $USER
+    sudo usermod -aG docker "$USER"
     echo "Permissions updated."
-    echo "--------------------------------------------------"
-    echo "Package installation completed for $OS!"
-    echo "To run docker without sudo, you MUST run:"
-    echo "   newgrp docker"
-    echo "OR log out and log back in."
-    echo "--------------------------------------------------"
+    echo "To run docker without sudo in this session, run: newgrp docker"
+    echo "(or log out and log back in.)"
 fi
 
-# 4. Deploy application (clone repo if needed, then start stack)
 echo "--------------------------------------------------"
-echo "Deploying Heart360 Toolkit demo application..."
-DEPLOY_BASE="${H360TK_DEPLOY_DIR:-$HOME}"
-cd "$DEPLOY_BASE"
-H360_DIR="$DEPLOY_BASE/h360tk_demo"
-if [ -d "$H360_DIR" ]; then
-    echo "Directory $H360_DIR already exists; skipping git clone."
-else
-    git clone https://github.com/simpledotorg/h360tk_demo.git "$DEPLOY_BASE/h360tk_demo"
-fi
-cd "$H360_DIR"
-run_docker_compose_up "$H360_DIR"
-echo "docker compose up -d completed."
-echo "See the repository README for service URLs (Grafana, SFTPGo, etc.)."
+echo "Package installation finished for $OS."
+echo "Next: 
+echo ""
+echo "See README.md for deploying the application."
 echo "--------------------------------------------------"
