@@ -44,6 +44,24 @@ HEARTS360 Toolkit supports three main use cases:
 **District-Level Oversight:** Each facility uploads their data, and district team views the district-level dashboard to monitor hypertension care across all facilities. This enables district-wide visibility without compromising patient privacy, supports data-driven decision making, and helps allocate resources based on need.
 
 ---
+## Quick Server Setup (One-Line Installer)
+
+If you are setting up this system on a fresh server, you can use the provided installer script to automatically install all required dependencies.
+
+### Run the Installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/simpledotorg/h360tk_demo/main/deployer.sh | bash
+```
+
+### What this does
+
+- Installs system dependencies
+- Installs Docker, Docker Compose & Git
+- Prepares environment for deployment
+
+---
+
 ## Setup Instructions
 
 ### 1. Clone the Repository
