@@ -425,3 +425,28 @@ So **no manual trigger is required** — uploading the file is enough.
   * Your Host IP → for network access
 * Passive ports `50000–50100` must be open if accessing from outside
 * Change default credentials in production
+
+---
+
+## Reset Database (Delete All Data)
+
+If you want to completely reset the system and remove all existing data from the database, you can delete the database volume and recreate it.
+
+### Steps
+
+Run the following commands from the project root directory:
+
+```bash
+docker compose down
+rm -rf .database
+docker compose up -d
+```
+### What this does
+- Stops all running containers
+- Deletes the persisted database files (`.database` directory)
+- Recreates a fresh database on next startup
+
+### ⚠️ Caution
+- **This will permanently delete all data**, including uploaded files, processed records, and any changes made to the database
+- This action **cannot be undone**
+- Make sure to take a backup if you need the data before running these commands
