@@ -179,6 +179,15 @@ COL_FIRST_NAME = 'Full Name'
 
 You can similarly update other column mappings as needed.
 
+##### Note:
+⚠️ Please don't change or comment out any of the variable starting with "COL_". The script uses these to read values and will error out if commented out. If you wish to change the column name for which the script should read from nased on your data file, just change the name value of these variables to reflect the column name in you data file.
+
+For example:
+COL_INDIVIDUAL_ID = 'Patient ID' represents there is a column with name "Patient ID" in my data file and that value will be used as the individual id.
+
+If your file has some other column holding this value, say 'System ID' you can just do so by doing
+COL_INDIVIDUAL_ID = 'System ID'
+
 #### Date Formats
 
 The script supports multiple date formats defined in the `CSV_DATE_FORMATS` variable.
@@ -450,3 +459,33 @@ docker compose up -d
 - **This will permanently delete all data**, including uploaded files, processed records, and any changes made to the database
 - This action **cannot be undone**
 - Make sure to take a backup if you need the data before running these commands
+
+---
+
+## Logs and Troubleshooting
+he system generates logs at different levels which can help in debugging issues related to ingestion, uploads, and container behavior.
+
+### View Container Logs
+To view logs for all running services:
+
+```bash
+docker compose logs -f
+```
+
+### FTP Upload Logs
+Logs for file uploads and ingestion hooks are written to:
+
+```bash
+logs/sftpgo-ingest/ingest-hook.log
+```
+### Common Use Cases
+- Debug failed file uploads
+- Verify ingestion script execution
+
+### Tips
+-f flag follows logs in real time.
+Use --tail 100 to limit output
+
+```bash
+docker compose logs --tail 100 -f
+```
