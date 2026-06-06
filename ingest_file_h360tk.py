@@ -36,6 +36,10 @@ COL_DIASTOLIC = 'Diastolic'
 COL_BS_TYPE = 'Blood Sugar Type'
 COL_BS_VALUE = 'Blood Sugar Value'
 
+# Diagnosis columns
+COL_DIAGNOSIS_1 = 'Diagnosis 1'
+COL_DIAGNOSIS_2 = 'Diagnosis 2'
+
 
 CSV_DATE_FORMATS = ["%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y", "%d-%m-%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%d/%m/%y %H:%M:%S"]
 DATE_FORMAT_OUT = "%Y-%m-%d"
@@ -67,8 +71,15 @@ HIERARCHY_LEVELS = [
     {'level': 4, 'column': [COL_SHC], 'display_name': 'Sub-Facility', 'var_name': 'sub_facility', 'default': None},
 ]
 
+# --- ALLOWED BLOOD SUGAR TYPES ---
+# Only these types are accepted during ingestion. Any other value
+# causes the blood sugar record to be discarded.
 ALLOWED_SUGAR_TYPES = {'RBS', 'FBS', 'PPBS', 'HBA1C'}
 DEFAULT_SUGAR_TYPE = 'RBS'
+
+# --- ALLOWED DIAGNOSIS CODES ---
+# Only these codes are accepted. Any other value is silently ignored.
+ALLOWED_DIAGNOSIS_CODES = {'I10', 'E11'}
 
 # --- HELPER FUNCTIONS ---
 
@@ -275,6 +286,23 @@ ON CONFLICT (encounter_id) DO UPDATE SET
 """
     cur.execute(sql)
 
+def execute_insert_diagnosis(cur, patient_id_sql, diagnosis_code):
+    """Insert a diagnosis for a patient. Only allows codes in ALLOWED_DIAGNOSIS_CODES."""
+    if diagnosis_code not in ALLOWED_DIAGNOSIS_CODES:
+        return
+
+    sql = f"""
+    INSERT INTO patient_diagnoses (patient_id, diagnosis_code)
+    VALUES (
+        {patient_id_sql},
+        {to_sql_literal(diagnosis_code)}
+    )
+    ON CONFLICT (patient_id, diagnosis_code)
+    DO NOTHING;
+    """
+
+    cur.execute(sql)
+
 # --- MAIN INGESTION AND EXECUTION FUNCTION ---
 
 def ingest_and_execute(file_path: str) -> None:
@@ -283,6 +311,10 @@ def ingest_and_execute(file_path: str) -> None:
     into the database using direct SQL (matching reference hierarchy pattern).
 
     Facility hierarchy: Region → District → Facility → Sub-Facility (see HIERARCHY_LEVELS).
+
+    Diagnosis tags are read from 'Diagnosis 1' and 'Diagnosis 2' columns.
+    No fallback logic is applied — if diagnosis columns are empty, no
+    diagnosis tag is created for that patient.
     """
 
     DTYPE_MAPPING = {COL_INDIVIDUAL_ID: str, COL_MOBILE: str}
@@ -343,7 +375,7 @@ def ingest_and_execute(file_path: str) -> None:
                     stats['invalid_visit_date'] += 1
                     print(f"Row {idx + 2}: Skipping - registration date and visit time not found or invalid", file=sys.stderr)
                     continue
-            
+
             # If registration date not found, try to use last visit time
             if not registration_date:
                 if visit_date:
@@ -358,22 +390,28 @@ def ingest_and_execute(file_path: str) -> None:
 
             raw_sugar_type = row.get(COL_BS_TYPE)
             sugar_type = None
-            if not raw_sugar_type or pd.isna(raw_sugar_type):
-                sugar_type = DEFAULT_SUGAR_TYPE
-            else:
-                sugar_type = str(raw_sugar_type).strip().upper()
-                if sugar_type not in ALLOWED_SUGAR_TYPES:
-                    sugar_type = None
-                    print(
-                        f"Row {idx + 2}: Skipping - invalid blood sugar type '{raw_sugar_type}'",
-                        file=sys.stderr
-                    )
-
             sugar_value = row.get(COL_BS_VALUE)
+
+            if pd.isna(sugar_value) or sugar_value is None:
+                sugar_value = None
+                sugar_type = None
+            else:
+                if not raw_sugar_type or pd.isna(raw_sugar_type):
+                    sugar_type = DEFAULT_SUGAR_TYPE
+                else:
+                    sugar_type = str(raw_sugar_type).strip().upper()
+                    if sugar_type not in ALLOWED_SUGAR_TYPES:
+                        # Invalid BS type: discard entire BS record
+                        sugar_type = None
+                        sugar_value = None
+                        print(
+                            f"Row {idx + 2}: Invalid blood sugar type '{raw_sugar_type}' — BS record discarded",
+                            file=sys.stderr
+                        )
 
             patient_id = uuid_to_int_hash(row.get(COL_INDIVIDUAL_ID))
             # Build patient fields
-            
+
             patient_name = build_patient_name(row)
 
             gender = safe_str(row.get(COL_SEX)) if not pd.isna(row.get(COL_SEX)) else None
@@ -399,6 +437,10 @@ def ingest_and_execute(file_path: str) -> None:
             phc = safe_str(row.get(COL_PHC)) or 'UNKNOWN'
             hierarchy = build_hierarchy_from_row(row)
 
+            # Determine if we have BP and/or BS data
+            has_bp = not pd.isna(systolic) if systolic is not None else False
+            has_bs = sugar_value is not None
+
             # Log the record
             log_record = {
                 'patient_id': patient_id,
@@ -406,10 +448,10 @@ def ingest_and_execute(file_path: str) -> None:
                 'facility': phc,
                 'registration_date': registration_date.strftime(DATE_FORMAT_OUT) if registration_date else None,
                 'encounter_datetime': visit_date.strftime(DATE_FORMAT_OUT) if visit_date else None,
-                'systolic_bp': systolic if systolic else None,
-                'diastolic_bp': diastolic if diastolic else None,
-                'blood_sugar_type': sugar_type if sugar_type else None,
-                'blood_sugar_value': sugar_value if sugar_value else None
+                'systolic_bp': systolic if has_bp else None,
+                'diastolic_bp': diastolic if has_bp else None,
+                'blood_sugar_type': sugar_type if has_bs else None,
+                'blood_sugar_value': sugar_value if has_bs else None
             }
             print(json.dumps(log_record, ensure_ascii=False, default=str))
 
@@ -426,15 +468,37 @@ def ingest_and_execute(file_path: str) -> None:
 
                 # 1. Upsert patient
                 execute_upsert_patient(cur, patient_id_sql, patient_name, gender, phone_number, registration_date, birth_date, org_unit_id)
-                stats['processed_records'] += 1
 
-                # 2. Create encounter(s) and insert clinical data
+                # 2. Read diagnosis columns and insert diagnosis tags
+                #    NO fallback logic — only explicit diagnosis values are used.
+                diagnosis_1 = safe_str(row.get(COL_DIAGNOSIS_1))
+                diagnosis_2 = safe_str(row.get(COL_DIAGNOSIS_2))
+
+                diagnoses = set()
+
+                if diagnosis_1:
+                    diagnoses.add(diagnosis_1.strip().upper())
+
+                if diagnosis_2:
+                    diagnoses.add(diagnosis_2.strip().upper())
+
+                for diagnosis_code in diagnoses:
+                    execute_insert_diagnosis(
+                        cur,
+                        patient_id_sql,
+                        diagnosis_code
+                    )
+
+                # 3. Create encounter and insert clinical data
                 enc_id = execute_insert_encounter(cur, patient_id_sql, visit_date, org_unit_id)
-                if not pd.isna(systolic) and not pd.isna(diastolic):
+
+                if has_bp:
                     execute_insert_bp(cur, enc_id, systolic, diastolic)
 
-                if not pd.isna(sugar_value) and not pd.isna(sugar_type):
+                if has_bs:
                     execute_insert_bs(cur, enc_id, sugar_type, sugar_value)
+
+                stats['processed_records'] += 1
 
             except psycopg2.Error as e:
                 print(f"\n--- RECORD FAILURE ---", file=sys.stderr)
