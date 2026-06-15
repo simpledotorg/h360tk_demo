@@ -1,4 +1,4 @@
-In order to launch this poc on local:
+In order to launch this h360tk_demo on local:
 
 ```
 git clone https://github.com/simpledotorg/h360tk_demo.git
