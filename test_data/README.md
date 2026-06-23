@@ -14,8 +14,10 @@
 | Visit Time        | Date (and optionally time) of the most recent clinical encounter. Accepts: DD/MM/YYYY, YYYY-MM-DD, or with time (e.g. "2024-03-15 10:30:00"). | REQUIRED. Used as the encounter date. Also serves as a fallback for Registration Date if that field is missing. Rows without a valid date here are skipped. |
 | Systolic          | Systolic blood pressure reading as a number (e.g. "128"). | Required, if missing BP record is skipped |
 | Diastolic         | Diastolic blood pressure reading as a number (e.g. "82"). | Required, if missing BS record is skipped |
-| Blood Sugar Type  | Type of blood sugar test (RBS / FBS / HBA1C / PPBS). | Defaults to "RBS" if not provided. |
-| Blood Sugar Value | Blood sugar reading as a number (e.g. "110"). | Optional
+| Blood Sugar Type  | Type of blood sugar test (RBS / FBS / HBA1C / PPBS). | Defaults to "RBS" if not provided. Leave blank when no blood sugar value is recorded. |
+| Blood Sugar Value | Blood sugar reading as a number (e.g. "110"). | Optional |
+| Diagnosis 1       | Primary diagnosis ICD code for hypertension (e.g. "I10"). | Tags the patient for the hypertension dashboard. Column name and code are configurable in ingestion (`COL_DIAGNOSIS_1`, `ALLOWED_DIAGNOSIS_CODES`). |
+| Diagnosis 2       | Secondary diagnosis ICD code for diabetes (e.g. "E11"). | Tags the patient for the diabetes dashboard. Leave blank if the patient has no diabetes diagnosis. Column name and code are configurable in ingestion (`COL_DIAGNOSIS_2`, `ALLOWED_DIAGNOSIS_CODES`). |
 | Region            | Name of the administrative region (Level 1 geography). Free text string. | |
 | District          | Name of the district (Level 2 geography). Free text string. | |
 | Facility          | Name of the health facility (e.g. primary care centre). Free text string. | |
