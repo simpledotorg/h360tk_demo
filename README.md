@@ -10,7 +10,7 @@ Once the system is running, access the dashboard at:
 
 - **URL:** http://localhost:3000/d/heart360demo/heart-360-global-dashboard
 - **Username:** `admin`
-- **Password:** `your_secure_password`
+- **Password:** `Admin@Heart360`
 
 To upload manually through UI, navigate to:
 
@@ -137,7 +137,7 @@ Once the system is running, access the dashboard at:
 
 - **URL:** http://localhost:3000/d/heart360demo/heart-360-global-dashboard
 - **Username:** `admin`
-- **Password:** `your_secure_password`
+- **Password:** `Admin@Heart360`
 
 ### FTP Server
 
