@@ -108,6 +108,22 @@ services:
       - FILEBROWSER_ADMIN_PASSWORD=admin
       - FILEBROWSER_BASEURL=/
 
+  # Lightweight local SFTP server for testing exporter/importer workflows.
+  # Credentials: sftp-user / sftp-pass  (change in .env via SFTP_USER / SFTP_PASSWORD).
+  # Files land in ./sftp-inbox on the host.
+  sftp-server:
+    image: atmoz/sftp:latest
+    container_name: sftp-server
+    restart: unless-stopped
+    ports:
+      - "2222:22"
+    volumes:
+      - ./sftp-inbox:/home/${SFTP_USER:-sftpuser}/upload
+      # Persistent host keys — prevents known_hosts warnings on every container restart.
+      - ./sftp-keys/ssh_host_ed25519_key:/etc/ssh/ssh_host_ed25519_key:ro
+      - ./sftp-keys/ssh_host_rsa_key:/etc/ssh/ssh_host_rsa_key:ro
+    command: "${SFTP_USER:-sftpuser}:${SFTP_PASSWORD:-sftppass}:1001"
+
   # Custom image: drakkan/sftpgo + Python venv; upload hook runs ingest_file_h360tk.py (see Dockerfile.sftpgo).
   sftpgo:
     build:
