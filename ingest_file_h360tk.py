@@ -354,10 +354,12 @@ def ingest_and_execute(file_path: str) -> None:
 
     conn = None
     cur = None
+    org_unit_cache = {}
+    COMMIT_BATCH_SIZE = 500
 
     try:
         conn = psycopg2.connect(**DB_CONNECTION_PARAMS)
-        conn.autocommit = True
+        conn.autocommit = False
         cur = conn.cursor()
         sync_hierarchy_config(cur)
 
@@ -456,15 +458,26 @@ def ingest_and_execute(file_path: str) -> None:
             print(json.dumps(log_record, ensure_ascii=False, default=str))
 
             # --- Per-Row Insertion ---
+            # Each row runs inside its own SAVEPOINT so a single bad row can be
+            # rolled back without discarding the rest of the batch's uncommitted work.
+            cur.execute("SAVEPOINT row_sp")
             try:
                 patient_id_sql = to_sql_literal(patient_id, target_type='bigint')
 
                 if patient_id_sql == 'NULL::BIGINT':
                     print(f"Row {idx + 2}: Skipping - NULL patient_id", file=sys.stderr)
+                    cur.execute("RELEASE SAVEPOINT row_sp")
                     continue
 
-                # 0. Upsert org_unit hierarchy chain (returns leaf org_unit_id)
-                org_unit_id = execute_upsert_org_unit_chain(cur, hierarchy)
+                # 0. Upsert org_unit hierarchy chain (returns leaf org_unit_id).
+                # Cached by hierarchy tuple — most rows in a file share the same
+                # Region/District/Facility/Sub-Facility path, so this avoids
+                # re-running the upsert on every single row.
+                hierarchy_key = tuple(hierarchy)
+                if hierarchy_key in org_unit_cache:
+                    org_unit_id = org_unit_cache[hierarchy_key]
+                else:
+                    org_unit_id = execute_upsert_org_unit_chain(cur, hierarchy)
 
                 # 1. Upsert patient
                 execute_upsert_patient(cur, patient_id_sql, patient_name, gender, phone_number, registration_date, birth_date, org_unit_id)
@@ -498,11 +511,22 @@ def ingest_and_execute(file_path: str) -> None:
                 if has_bs:
                     execute_insert_bs(cur, enc_id, sugar_type, sugar_value)
 
+                # Only cache the org_unit_id once the whole row has succeeded —
+                # caching it earlier would risk reusing an id whose insert got
+                # rolled back by a later failure in this same row.
+                org_unit_cache[hierarchy_key] = org_unit_id
+                cur.execute("RELEASE SAVEPOINT row_sp")
                 stats['processed_records'] += 1
 
             except psycopg2.Error as e:
+                cur.execute("ROLLBACK TO SAVEPOINT row_sp")
                 print(f"\n--- RECORD FAILURE ---", file=sys.stderr)
                 print(f"Error processing row {idx + 2}. Skipping. Details: {e}", file=sys.stderr)
+
+            if (idx + 1) % COMMIT_BATCH_SIZE == 0:
+                conn.commit()
+
+        conn.commit()
 
         print(f"\n--- EXECUTION SUMMARY ---", file=sys.stderr)
         print(f"Total rows in Excel: {stats['total_rows']}", file=sys.stderr)
