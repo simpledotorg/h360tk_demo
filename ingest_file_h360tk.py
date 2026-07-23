@@ -1,6 +1,7 @@
 import sys
 import json
 import hashlib
+import time
 import pandas as pd
 from datetime import datetime, timedelta
 import re
@@ -80,6 +81,8 @@ DEFAULT_SUGAR_TYPE = 'RBS'
 # --- ALLOWED DIAGNOSIS CODES ---
 # Only these codes are accepted. Any other value is silently ignored.
 ALLOWED_DIAGNOSIS_CODES = {'I10', 'E11'}
+
+COMMIT_BATCH_SIZE = 500
 
 # --- HELPER FUNCTIONS ---
 
@@ -355,9 +358,10 @@ def ingest_and_execute(file_path: str) -> None:
     conn = None
     cur = None
     org_unit_cache = {}
-    COMMIT_BATCH_SIZE = 500
 
     try:
+        insert_start_time = time.time()
+
         conn = psycopg2.connect(**DB_CONNECTION_PARAMS)
         conn.autocommit = False
         cur = conn.cursor()
@@ -528,11 +532,17 @@ def ingest_and_execute(file_path: str) -> None:
 
         conn.commit()
 
+        insert_elapsed_seconds = int(time.time() - insert_start_time)
+        hours, remainder = divmod(insert_elapsed_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        insert_elapsed_hms = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
         print(f"\n--- EXECUTION SUMMARY ---", file=sys.stderr)
         print(f"Total rows in Excel: {stats['total_rows']}", file=sys.stderr)
         print(f"Invalid last visit date excluded: {stats['invalid_visit_date']}", file=sys.stderr)
         print(f"Invalid registration date excluded: {stats['invalid_registration_date']}", file=sys.stderr)
         print(f"Successfully processed records: {stats['processed_records']}", file=sys.stderr)
+        print(f"Total time to insert records: {insert_elapsed_hms}", file=sys.stderr)
 
     except psycopg2.Error as e:
         print(f"\n--- CONNECTION ERROR ---", file=sys.stderr)
