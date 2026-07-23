@@ -1,7 +1,5 @@
 # Ingestion Performance: Choosing a Commit Batch Size
 
-## TL;DR
-
 `ingest_file_h360tk.py` writes rows to Postgres in batches instead of
 committing after every single row. The batch size is controlled by the
 `COMMIT_BATCH_SIZE` constant in the script (currently hardcoded to **500**).
@@ -30,14 +28,6 @@ transaction. For large files this meant tens of thousands of individual
 commits per file. The script now batches commits — see
 `ingest_and_execute()` in [`ingest_file_h360tk.py`](../ingest_file_h360tk.py):
 
-```python
-conn.autocommit = False
-COMMIT_BATCH_SIZE = 500
-...
-if (idx + 1) % COMMIT_BATCH_SIZE == 0:
-    conn.commit()
-```
-
 Each row still runs inside its own `SAVEPOINT`, so one bad row is rolled back
 individually without discarding the rest of an already-processed batch.
 
@@ -53,13 +43,6 @@ docker compose restart file-processor   # filebrowser / poll-based path
 docker compose restart sftpgo           # SFTP/FTP path
 ```
 
-Docker Desktop bind mounts can serve a stale view of a changed file — if a
-run doesn't reflect your edit, restart the container again and confirm with:
-
-```bash
-docker exec file-upload-trigger grep COMMIT_BATCH_SIZE /scripts/ingest_file_h360tk.py
-```
-
 ## Test methodology
 
 For each value in the list below:
@@ -67,10 +50,7 @@ For each value in the list below:
 1. Set `COMMIT_BATCH_SIZE` to that value in the script.
 2. Restart the relevant container.
 3. Ingest a representative file (ideally the same file/row-count for every
-   run, so results are comparable) and time it end-to-end, e.g.:
-   ```bash
-   time python3 ingest_file_h360tk.py <file>
-   ```
+   run, so results are comparable) and time it end-to-end.
 4. Record the time and the row count from the script's own
    `Successfully processed records:` summary line.
 5. Confirm `0` entries under `RECORD FAILURE` in the output before trusting
