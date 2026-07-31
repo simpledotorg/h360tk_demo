@@ -10,7 +10,7 @@ Once the system is running, access the dashboard at:
 
 - **URL:** http://localhost:3000/d/heart360demo/heart-360-global-dashboard
 - **Username:** `admin`
-- **Password:** `your_secure_password`
+- **Password:** `Admin@Heart360`
 
 To upload manually through UI, navigate to:
 
@@ -137,7 +137,7 @@ Once the system is running, access the dashboard at:
 
 - **URL:** http://localhost:3000/d/heart360demo/heart-360-global-dashboard
 - **Username:** `admin`
-- **Password:** `your_secure_password`
+- **Password:** `Admin@Heart360`
 
 ### FTP Server
 
@@ -157,9 +157,11 @@ There is an ingestion script `ingest_file_h360tk.py` which gets triggered when a
 
 There are several customizations that you can apply to this script to better suit your data format.
 
+**Note:** We recommend using **CSV** files for data import, as they provide faster ingestion. **Excel (.xlsx)** files are also supported but may take longer to process.
+
 #### Header Row Configuration
 
-Your Excel file might contain metadata at the beginning, and the actual data may start later in the file.
+Your CSV or Excel file might contain metadata at the beginning, and the actual data may start later in the file.
 
 The script uses the `HEADER_ROW` variable to determine where the header is located.
 
@@ -265,7 +267,7 @@ This is configured in the Docker setup under the `sftpgo` service, which exposes
 You can upload files using tools like `curl`:
 
 ```
-curl -T ./test_data/01_Sample_Data.xlsx "ftp://webuser:userpass456@127.0.0.1:2121/01_Sample_Data.xlsx"
+curl -T ./test_data/01_Sample_Data.csv "ftp://webuser:userpass456@127.0.0.1:2121/01_Sample_Data.csv"
 ```
 ---
 
@@ -295,9 +297,9 @@ Add the following content:
 # USER-DEFINED FILE GENERATION
 # -------------------------------
 
-# Example: Generate a file name with today's date
+# Example: Generate a CSV file name with today's date
 BASE_DIR="/path/to/output"
-FILE_NAME="file_$(date +%F).xlsx"
+FILE_NAME="file_$(date +%F).csv"
 FILE_PATH="$BASE_DIR/$FILE_NAME"
 
 # Ensure output directory exists
