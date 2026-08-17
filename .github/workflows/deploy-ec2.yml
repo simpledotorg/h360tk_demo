@@ -1,0 +1,17 @@
+name: Deploy to EC2
+
+# Use reusable workflow to deploy to EC2. Triggered on push to 0.5.0.
+on:
+  push:
+    branches: ["0.5.0"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: simpledotorg/poc_heart360_on_grafana/.github/workflows/deploy-ec2-reusable.yml@main
+    with:
+      ec2_deploy_path: /home/ec2-user/h360tk_demo
+    secrets:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
