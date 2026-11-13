@@ -125,9 +125,8 @@ services:
     environment:
       - SFTPGO_HTTPD__BINDINGS__0__PORT=8080
       # Serve the web admin/client under the instance prefix, matching the
-      # sftp= entry in the proxy's H360TK_ROUTES. SFTPGo documents web_root as
-      # the base URL for the web interfaces but gives no worked example -
-      # verify <prefix>/sftp/ loads after the first deploy.
+      # sftp= entry in the proxy's H360TK_ROUTES. Without it SFTPGo serves its
+      # web UI from the domain root and every asset 404s behind the prefix.
       - SFTPGO_HTTPD__WEB_ROOT=${H360TK_BASE_PATH}/sftp
       - SFTPGO_FTPD__BINDINGS__0__PORT=2121
       # PASV must advertise an address the *client* can open data connections to (not the container IP).
