@@ -6,17 +6,36 @@ cd h360tk_demo
 docker compose up -d
 ```
 
-Once the system is running, access the dashboard at:
+Once the system is running, every part of the stack is served by the `proxy`
+container under this instance's URL path prefix (`H360TK_BASE_PATH`, `/demo`).
 
-- **URL:** http://localhost:3000/d/heart360demo/heart-360-global-dashboard
+**Dashboard**
+
+- **URL:** http://localhost/demo/d/heart360demo/heart-360-global-dashboard
 - **Username:** `admin`
 - **Password:** `Admin@Heart360`
 
-To upload manually through UI, navigate to:
+**File upload (FileBrowser)**
 
-- **Web Admin URL:** http://localhost:8090/
+- **URL:** http://localhost/demo/upload/
+- **Username:** `admin`
+- FileBrowser generates a random admin password on first start and logs it once:
+  `docker compose logs filebrowser | grep -i password`
+
+**SFTPGo web client (FTP/SFTP accounts)**
+
+- **URL:** http://localhost:8090/ — also routed at http://localhost/demo/sftp/,
+  which is not yet confirmed on a real deployment (see
+  `deploy/path-routing/README.md` in `h360tk_grafana_core`).
 - **Username:** `webuser`
 - **Password:** `userpass456`
+
+> **Running this locally?** `.env` ships with the hosted defaults
+> (`H360TK_PUBLIC_DOMAIN=toolkit.hearts360.org`, `H360TK_PUBLIC_SCHEME=https`).
+> Set them to `localhost` and `http` so Grafana builds correct absolute links,
+> and set `H360TK_PROXY_PORT` if port 80 is already taken on your machine.
+> Deployed, the same stack answers at https://toolkit.hearts360.org/demo/ and
+> https://toolkit.hearts360.org/demo/upload/.
 
 ---
 
@@ -135,9 +154,11 @@ docker compose up -d
 
 Once the system is running, access the dashboard at:
 
-- **URL:** http://localhost:3000/d/heart360demo/heart-360-global-dashboard
+- **URL:** http://localhost/demo/d/heart360demo/heart-360-global-dashboard
 - **Username:** `admin`
 - **Password:** `Admin@Heart360`
+
+The upload UI is at http://localhost/demo/upload/.
 
 ### FTP Server
 

@@ -8,6 +8,11 @@ services:
     environment:
       - GF_DATABASE_URL=postgres://grafana:ZDI5MGE3YmYyMTRlNGNmYThkMTYyZjk3@postgres:5432/${POSTGRES_DB}
       - GF_SECURITY_ADMIN_PASSWORD=Admin@Heart360
+      # Served under a URL path prefix behind the shared edge. ROOT_URL must be
+      # the public URL, not Grafana's own: %(protocol)s would resolve to http
+      # and break redirects and share links behind TLS termination.
+      - GF_SERVER_ROOT_URL=${H360TK_PUBLIC_SCHEME:-https}://${H360TK_PUBLIC_DOMAIN}${H360TK_BASE_PATH}/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
 
   postgres:
     image: simpledotorg/heart360tk-postgresql:${HEART360TK_VERSION}
@@ -73,7 +78,10 @@ services:
 # TODO: have configuration (like users) dumped out of the container, to avoid losing it
 # when reinstalling
   filebrowser:
-    image: gtstef/filebrowser:stable-slim
+    # Built in h360tk_grafana_core. Its entrypoint generates FileBrowser's
+    # config.yaml from H360TK_BASE_PATH, because the sub-path can only be set
+    # in a config file - there is no environment variable for it upstream.
+    image: simpledotorg/heart360tk-filebrowser:${HEART360TK_VERSION}
     container_name: filebrowser-quantum
     restart: unless-stopped
     ports:
@@ -82,7 +90,7 @@ services:
       - .upload:/srv:rw
     environment:
       - FILEBROWSER_ADMIN_PASSWORD=admin
-      - FILEBROWSER_BASEURL=/
+      - H360TK_BASE_PATH=${H360TK_BASE_PATH}
 
   # Custom image: drakkan/sftpgo + Python venv; upload hook runs ingest_file_h360tk.py (see Dockerfile.sftpgo).
   sftpgo:
@@ -116,6 +124,11 @@ services:
       - ./ingest_file_h360tk.py:/scripts/ingest_file_h360tk.py:ro
     environment:
       - SFTPGO_HTTPD__BINDINGS__0__PORT=8080
+      # Serve the web admin/client under the instance prefix, matching the
+      # sftp= entry in the proxy's H360TK_ROUTES. SFTPGo documents web_root as
+      # the base URL for the web interfaces but gives no worked example -
+      # verify <prefix>/sftp/ loads after the first deploy.
+      - SFTPGO_HTTPD__WEB_ROOT=${H360TK_BASE_PATH}/sftp
       - SFTPGO_FTPD__BINDINGS__0__PORT=2121
       # PASV must advertise an address the *client* can open data connections to (not the container IP).
       # Set FTP_PASSIVE_IP in .env to match how users connect: 127.0.0.1 for ftp://127.0.0.1:2121 only;
@@ -132,3 +145,25 @@ services:
       - SFTPGO_LOADDATA_MODE=1
       - SFTPGO_COMMON__ACTIONS__EXECUTE_ON=upload
       - SFTPGO_COMMON__ACTIONS__HOOK=/usr/local/bin/sftpgo_ingest_hook.sh
+
+  # Fronts this instance under its URL path prefix (H360TK_BASE_PATH).
+  # The shared edge for toolkit.hearts360.org forwards everything under that
+  # prefix here unchanged; this proxy decides which service answers, so adding
+  # a service to the instance never needs an edge change.
+  proxy:
+    # Built in h360tk_grafana_core; renders its nginx config at startup from
+    # the H360TK_* variables below, so this repo ships no nginx files.
+    image: simpledotorg/heart360tk-proxy:${HEART360TK_VERSION}
+    container_name: h360tk-proxy
+    restart: unless-stopped
+    depends_on:
+      - grafana
+      - filebrowser
+      - sftpgo
+    ports:
+      - "${H360TK_PROXY_PORT:-80}:80"
+    environment:
+      - H360TK_BASE_PATH=${H360TK_BASE_PATH}
+      # <segment>=<host>:<port> per sub-route; the dashboard is served at
+      # the prefix root. Routes this instance does not run are simply absent.
+      - H360TK_ROUTES=upload=filebrowser:80 sftp=sftpgo:8080
