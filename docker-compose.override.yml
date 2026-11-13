@@ -1,0 +1,20 @@
+# TEST ONLY - DELETE BEFORE MERGING.
+#
+# Docker Compose merges this over docker-compose.yml automatically, so it needs
+# no flags on the box.
+#
+# Pins only the two new images to the h360-208 branch build, leaving Grafana,
+# Postgres, the file processor and the exporter on HEART360TK_VERSION (0.5.0).
+# That isolates path routing from a full version bump: the only container
+# replaced is filebrowser, and the only one added is proxy.
+#
+# h360-208.457 is the immutable build tag, not the bare `h360-208` branch tag,
+# which moves if the branch is pushed again.
+#
+# To revert on the box: delete this file and `docker compose up -d`.
+services:
+  proxy:
+    image: simpledotorg/heart360tk-proxy:h360-208.457
+
+  filebrowser:
+    image: simpledotorg/heart360tk-filebrowser:h360-208.457
